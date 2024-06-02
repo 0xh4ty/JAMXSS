@@ -130,7 +130,7 @@ def scanner_task(url_queue, stop_event, single_scan, scan_only, custom_cookie, u
                 print("[+] Queue is empty, waiting for more URLs.")
 
 def main():
-    parser = argparse.ArgumentParser(description="JAMXSS (Just A Monster XSS Scanner) - An machine learning powered tool to test for reflected XSS vulnerabilities in web applications.")
+    parser = argparse.ArgumentParser(description="JAMXSS (Just A Monster XSS Scanner) - A machine learning powered tool to test for reflected XSS vulnerabilities in web applications.")
     parser.add_argument("-u", "--url", help="Target URL of the web application")
     parser.add_argument("--single-scan", action="store_true", help="Perform a single scan on the provided URL only")
     parser.add_argument("--scan-only", action="store_true", help="Only suggest payloads without executing them")
