@@ -12,6 +12,6 @@ shutil
 BeautifulSoup
 warnings
 pandas
-sklearn
+scikit-learn
 html
 requests
