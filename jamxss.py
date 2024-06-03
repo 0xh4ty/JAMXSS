@@ -90,6 +90,7 @@ def scanner_task(url_queue, stop_event, single_scan, stealth_mode, attack_mode, 
                 whole_dict[reflection] = payload_and_find
 
             if stealth_mode:
+                print_sub_separator()
                 print("[+] Stealth-mode: Payloads suggested but not executed.")
                 for key in whole_dict:
                     print(f"[+] Parameter: {key}, Suggested Payload: {whole_dict[key][0]['payload']}")
