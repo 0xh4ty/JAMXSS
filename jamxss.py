@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import threading
 import signal
 import shutil
+from collections import Counter
 
 # Add the project's root directory to the Python path
 current_dir = os.path.dirname(__file__)
@@ -37,7 +38,12 @@ def print_sub_separator():
         separator = separator[:terminal_width]
     print(separator)
 
-def scanner_task(url_queue, stop_event, single_scan, scan_only, custom_cookie, user_agent):
+def get_majority_context(contexts):
+    context_counter = Counter(contexts)
+    majority_context = context_counter.most_common(1)[0][0]
+    return majority_context
+
+def scanner_task(url_queue, stop_event, single_scan, stealth_mode, attack_mode, custom_cookie, user_agent):
     classifier, vectorizer = train_model()
     last_item_time = time.time()
 
@@ -57,11 +63,21 @@ def scanner_task(url_queue, stop_event, single_scan, scan_only, custom_cookie, u
             response_text_with_payload, reflections, request_data, form_data = test_reflections(url, headers=headers)
             
             if not response_text_with_payload or not reflections:
+                if single_scan:
+                    stop_event.set()
                 continue
             
             html_response_lines = response_text_with_payload.split('\n')
 
-            reflection_contexts = predict_contexts_for_reflections(html_response_lines, reflections, classifier, vectorizer)
+            reflection_contexts = []
+            for reflection in reflections:
+                contexts = []
+                for _ in range(5):
+                    classifier, vectorizer = train_model()
+                    context = predict_contexts_for_reflections(html_response_lines, [reflection], classifier, vectorizer)
+                    contexts.append(context[0][1])
+                majority_context = get_majority_context(contexts)
+                reflection_contexts.append((reflection[0], majority_context))  # Extract only the parameter name
 
             print("[+] Reflections and Predicted Contexts:")
             for reflection, context in reflection_contexts:
@@ -73,53 +89,59 @@ def scanner_task(url_queue, stop_event, single_scan, scan_only, custom_cookie, u
                 payload_and_find = payload_generator(context)
                 whole_dict[reflection] = payload_and_find
 
-            if scan_only:
-                print("[+] Scan-only mode: Payloads suggested but not executed.")
+            if stealth_mode:
+                print("[+] Stealth-mode: Payloads suggested but not executed.")
                 for key in whole_dict:
                     print(f"[+] Parameter: {key}, Suggested Payload: {whole_dict[key][0]['payload']}")
+                if single_scan:
+                    stop_event.set()
                 continue
 
-            if request_data:
-                try:
-                    for key in request_data:
-                        if key in whole_dict:
-                            request_data[key] = whole_dict[key][0]['payload']
+            if attack_mode:
+                if request_data:
+                    try:
+                        for key in request_data:
+                            if key in whole_dict:
+                                request_data[key] = whole_dict[key][0]['payload']
 
-                    response = send_request(url, request_data=request_data, form_data=form_data, custom_headers=headers)
+                        response = send_request(url, request_data=request_data, form_data=form_data, custom_headers=headers)
 
-                    if response:
-                        page_html_tree = html.fromstring(response)
+                        if response:
+                            page_html_tree = html.fromstring(response)
 
-                        for key in whole_dict:
-                            count = page_html_tree.xpath(whole_dict[key][0]['find'])
+                            for key in whole_dict:
+                                count = page_html_tree.xpath(whole_dict[key][0]['find'])
 
-                            if len(count):
-                                print_sub_separator()
-                                print("[*] Request vulnerable for parameter:", key)
-                                print("[*] Payload executed:", whole_dict[key][0]['payload'])
-                except Exception as e:
-                    print(f"[-] An error occurred: {e}")
+                                if len(count):
+                                    print_sub_separator()
+                                    print("[*] Request vulnerable for parameter:", key)
+                                    print("[*] Payload executed:", whole_dict[key][0]['payload'])
+                    except Exception as e:
+                        print(f"[-] An error occurred: {e}")
 
-            if form_data:
-                try:
-                    for key in form_data:
-                        if key in whole_dict:
-                            form_data[key] = whole_dict[key][0]['payload']
+                if form_data:
+                    try:
+                        for key in form_data:
+                            if key in whole_dict:
+                                form_data[key] = whole_dict[key][0]['payload']
 
-                    response = send_request(url, request_data=request_data, form_data=form_data, custom_headers=headers)
+                        response = send_request(url, request_data=request_data, form_data=form_data, custom_headers=headers)
 
-                    if response:
-                        page_html_tree = html.fromstring(response)
+                        if response:
+                            page_html_tree = html.fromstring(response)
 
-                        for key in whole_dict:
-                            count = page_html_tree.xpath(whole_dict[key][0]['find'])
+                            for key in whole_dict:
+                                count = page_html_tree.xpath(whole_dict[key][0]['find'])
 
-                            if len(count):
-                                print_sub_separator()
-                                print("[*] Request vulnerable for parameter:", key)
-                                print("[*] Payload executed:", whole_dict[key][0]['payload'])
-                except Exception as e:
-                    print(f"[-] An error occurred: {e}")
+                                if len(count):
+                                    print_sub_separator()
+                                    print("[*] Request vulnerable for parameter:", key)
+                                    print("[*] Payload executed:", whole_dict[key][0]['payload'])
+                    except Exception as e:
+                        print(f"[-] An error occurred: {e}")
+
+            if single_scan:
+                stop_event.set()
 
         except queue.Empty:
             if time.time() - last_item_time > 10:
@@ -133,13 +155,20 @@ def main():
     parser = argparse.ArgumentParser(description="JAMXSS (Just A Monster XSS Scanner) - A machine learning powered tool to test for reflected XSS vulnerabilities in web applications.")
     parser.add_argument("-u", "--url", help="Target URL of the web application")
     parser.add_argument("--single-scan", action="store_true", help="Perform a single scan on the provided URL only")
-    parser.add_argument("--scan-only", action="store_true", help="Only suggest payloads without executing them")
+    parser.add_argument("--stealth-mode", action="store_true", help="Only suggest payloads without executing them")
+    parser.add_argument("--attack-mode", action="store_true", help="Execute suggested payloads to test for vulnerabilities")
     parser.add_argument("--cookie", type=str, help="Custom cookie header to use for the requests")
     parser.add_argument("--user-agent", type=str, default="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36", help="Custom user agent string")
     args = parser.parse_args()
 
     if not args.url:
         parser.error('Please specify a target URL using the -u or --url argument.')
+
+    if not args.stealth_mode and not args.attack_mode:
+        parser.error('Please specify either --stealth-mode or --attack-mode to run the scanner.')
+
+    if args.stealth_mode and args.attack_mode:
+        parser.error('Please choose either --stealth-mode or --attack-mode, not both.')
 
     display_banner()
 
@@ -154,7 +183,7 @@ def main():
 
     # Start the scanner task in a separate thread
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        future = executor.submit(scanner_task, url_queue, stop_event, args.single_scan, args.scan_only, args.cookie, args.user_agent)
+        future = executor.submit(scanner_task, url_queue, stop_event, args.single_scan, args.stealth_mode, args.attack_mode, args.cookie, args.user_agent)
 
         # Start crawling and add links to the queue
         try:
