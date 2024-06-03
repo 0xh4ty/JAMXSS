@@ -8,15 +8,15 @@ JAMXSS is a powerful tool designed to test for reflected XSS vulnerabilities in 
 - **Stealth Mode**: Suggests payloads without executing them, useful for safe scanning.
 - **Attack Mode**: Executes suggested payloads to actively test for vulnerabilities.
 - **Single Scan Mode**: Allows for a quick scan of a single URL.
-- **Multi-threaded**: Efficiently handles multiple URLs concurrently.
+- **Multi-threaded**: Efficiently handles crawling and scanning concurrently.
 - **Custom Headers**: Supports custom cookie headers and user-agent strings for requests.
 
 ## Installation
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/jamxss.git
-    cd jamxss
+    git clone https://github.com/0xh4ty/JAMXSS.git
+    cd JAMXSS
     ```
 
 2. **Install dependencies**:
