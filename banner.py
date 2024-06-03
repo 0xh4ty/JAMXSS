@@ -8,6 +8,7 @@ def display_banner():
  ╚════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝
                                                                                                          
    JAMXSS - Just A Monster XSS Scanner
+   License: MIT
    Author: 0xh4ty
    Github: https://www.github.com/0xh4ty/JAMXSS
    Version: 0.1.0
