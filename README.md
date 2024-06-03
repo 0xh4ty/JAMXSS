@@ -27,7 +27,7 @@ JAMXSS is a powerful tool designed to test for reflected XSS vulnerabilities in 
 ## Usage
 
 ```bash
-python jamxss.py -u <target_url> [options]
+python3 jamxss.py -u <target_url> [options]
 ```
 
 ## Options
@@ -44,13 +44,13 @@ python jamxss.py -u <target_url> [options]
 ### Single scan with stealth mode:
 
 ```bash
-python jamxss.py -u http://example.com --single-scan --stealth-mode
+python3 jamxss.py -u http://example.com --single-scan --stealth-mode
 ```
 
 ### Full scan with attack mode:
 
 ```bash
-python jamxss.py -u http://example.com --attack-mode
+python3 jamxss.py -u http://example.com --attack-mode
 ```
 
 ## How It Works
